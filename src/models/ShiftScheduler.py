@@ -10,6 +10,10 @@ import json
 from datetime import datetime
 
 
+##########################
+# ShiftScheduler Class
+##########################
+
 class ShiftScheduler:
     def __init__(self, temp_emp, full_emp, days, work_types, absolute_min_workers_per_day, year, month):
         self.employees = temp_emp
@@ -57,6 +61,9 @@ class ShiftScheduler:
         ) + pulp.lpSum(
             penalty_for_not_assigning_sacrificed_work * self.penalty_vars[day]
             for day in self.days
+        ) + pulp.lpSum(
+            employee.first_week_penalty_vars
+            for employee in self.employees
         )
 
     def caluculate_days(self):
@@ -229,16 +236,25 @@ class ShiftScheduler:
                     if work_type not in employee.work_type:
                         self.prob += employee.shift_vars[(day, work_type)] == 0
 
+    def math_round(self, number, digits=0):
+        if digits == 0:
+            # 小数点以下の値が.5以上なら1を加えることで上に丸める
+            if number >= 0:
+                return math.floor(number + 0.5)
+            else:
+                return math.ceil(number - 0.5)
+
     # （完全週の）一週間当たりの業務数制限
+
     def add_constraint_for_weekly_working_days(self):
         first_monday, days_in_month, weeks_in_month = self.caluculate_days()
         days_in_last_week = (days_in_month + 1) - \
             ((first_monday) + weeks_in_month * 7)
-        print(days_in_last_week)
-
         for employee in self.employees:
             if days_in_last_week != 0:
-                last_weekly_days = employee.weekly_days * days_in_last_week // 7
+                last_weekly_days = self.math_round(
+                    employee.weekly_days * days_in_last_week / 7)
+                print(employee.name, "最終週勤務数", last_weekly_days)
             else:
                 last_weekly_days = 0
 
@@ -249,7 +265,6 @@ class ShiftScheduler:
                         end_day = start_day + days_in_last_week
                         print("月末開始終了", start_day, end_day)
                         weekly_days_for_constraint = last_weekly_days
-                        print(weekly_days_for_constraint)
                     else:
                         break
                 else:
@@ -322,8 +337,11 @@ class ShiftScheduler:
                 for start_day in range(len(self.days) - 2):
                     consecutive_days_work = pulp.lpSum(
                         employee.assigned_vars[day] for day in range(start_day, start_day + 3))
-                    self.prob += consecutive_days_work <= 2, f"no_consecutive_3_days_work_{
-                        employee.id}_{start_day}"
+                    paid_off = pulp.lpSum(
+                        employee.paid_vars[day] for day in range(start_day, start_day + 3))
+                    self.prob += consecutive_days_work + \
+                        paid_off <= 2, f"no_consecutive_3_days_work_{
+                            employee.id}_{start_day}"
                 # 夕食の次の日昼食は嫌
                 for start_day in range(len(self.days) - 1):
                     is_assigned_today_evning_work = pulp.lpSum(employee.shift_vars[(start_day, self.work_types[i])]
@@ -359,21 +377,19 @@ class ShiftScheduler:
 
     def add_constraint_for_weekly_working_days_informed_by_last_month_shift(self):
         first_monday, _, _ = self.caluculate_days()
-        print("3月第一月曜日", first_monday)
-        for employee in self.employees:
-            if not employee.over_work:
-                if 5 - employee.last_month_consecutive_days == first_monday:
-                    if employee.weekly_days - employee.last_month_period_work_days == first_monday:
-                        continue
-                if employee.id == 1:
-                    if 3 - employee.last_month_consecutive_days == first_monday:
-                        if employee.weekly_days - employee.last_month_period_work_days == first_monday:
-                            continue
-                self.prob += pulp.lpSum(employee.shift_vars[(day, work_type)]
-                                        for day in range(first_monday)
-                                        for work_type in self.work_types) == (employee.weekly_days - employee.last_month_period_work_days)
-
+        print(first_monday, "first")
+        if first_monday != 0:
+            print("3月第一月曜日", first_monday)
+            for employee in self.employees:
+                if not employee.over_work:
+                    self.prob += (employee.weekly_days - employee.last_month_period_work_days - pulp.lpSum(employee.shift_vars[(day, work_type)]
+                                                                                                           for day in range(first_monday)
+                                                                                                           for work_type in self.work_types))/7 <= employee.first_week_penalty_vars
+                    self.prob += employee.weekly_days - employee.last_month_period_work_days >= pulp.lpSum(employee.shift_vars[(day, work_type)]
+                                                                                                           for day in range(first_monday)
+                                                                                                           for work_type in self.work_types)
     # 先月分のシフトを考慮した5日連続の勤務を禁止する制約
+
     def add_constraint_for_no_consecutive_work_days_informed_by_last_month_shift(self):
         for employee in self.employees:
             consecutive_days_work = pulp.lpSum(employee.assigned_vars[day] for day in range(
@@ -402,26 +418,33 @@ class ShiftScheduler:
     # 常勤従業員に対する制約
     ###########################
     # 常勤従業員は特定の日に出勤するようにする制約
-    # 第一木金、第二金、第三木曜出勤
-    def add_constraint_for_work_day_for_full_time_emp(self):
+    def culuculate_must_work_days(self):
         first_monday, _, _ = self.caluculate_days()
         must_work_days = []
+        # 第一月曜日の時点で第一木金が終わっている
         if first_monday >= 4:
             must_work_days.append(first_monday - 4)
             must_work_days.append(first_monday - 3)
             must_work_days.append(first_monday + 4)
             must_work_days.append(first_monday + 10)
+        # 第一月曜日の時点で第一金のみが終わっている
         elif first_monday == 3:
             must_work_days.append(first_monday + 3)
             must_work_days.append(first_monday - 3)
             must_work_days.append(first_monday + 4)
-            must_work_days.append(first_monday + 10)
+            must_work_days.append(first_monday + 17)
         else:
             must_work_days.append(first_monday + 3)
             must_work_days.append(first_monday + 4)
             must_work_days.append(first_monday + 11)
             must_work_days.append(first_monday + 17)
         print(must_work_days)
+        return must_work_days
+
+    # 第一木金、第二金、第三木曜出勤
+
+    def add_constraint_for_work_day_for_full_time_emp(self):
+        must_work_days = self.culuculate_must_work_days()
         for full_emp in self.full_time_employees:
             for day in must_work_days:
                 self.prob += pulp.lpSum(full_emp.shift_vars[day]) == 1
@@ -466,9 +489,11 @@ class ShiftScheduler:
 
     # 常勤従業員に対してシフト希望を守る制約
     def add_constraint_for_day_off_requests_for_full_time_emp(self):
+        must_work_days = self.culuculate_must_work_days()
         for full_emp in self.full_time_employees:
             for day in full_emp.day_off_requests:
-                self.prob += full_emp.shift_vars[day] <= 0
+                if day not in must_work_days:
+                    self.prob += full_emp.shift_vars[day] <= 0
 
     #######################
     # 結果の表示

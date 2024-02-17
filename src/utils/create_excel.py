@@ -16,6 +16,13 @@ def create_excel(df):
             for cell in row:
                 cell.font = font
 
+        red_font = Font(name='HG丸ｺﾞｼｯｸM-PRO', size=10,  color="FF0000")
+        for row in ws.iter_rows():
+            for cell in row:
+                if cell.value == "二人体制の日":
+                    for cell in row:
+                        cell.font = red_font
+
         # 2列目以降の列幅を3.30に設定（40ピクセルに相当）
         for col in ws.columns:
             if col[0].column == 1:
