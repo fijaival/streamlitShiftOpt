@@ -5,7 +5,7 @@ from utils.data_preprocessor import process_data
 from utils.download import download
 from utils.validate_input import validate_input
 from run_optimization import run_optimization
-
+from auth import check_password
 
 def main():
     st.title('シフト自動生成')
@@ -42,4 +42,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if not check_password():
+        st.stop()  # Do not continue if check_password is not True.
     main()
