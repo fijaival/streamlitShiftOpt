@@ -297,8 +297,7 @@ class ShiftScheduler:
                 paid_off = pulp.lpSum(
                     employee.paid_vars[day] for day in range(start_day, start_day + 5))
                 self.prob += consecutive_days_work + \
-                    paid_off <= 4, f"no_consecutive_5_days_work_{
-                        employee.id}_{start_day}"
+                    paid_off <= 4, (f"no_consecutive_5_days_work_{employee.id}_{start_day}")
 
     # 第三木曜日は全員出勤
 
@@ -340,8 +339,7 @@ class ShiftScheduler:
                     paid_off = pulp.lpSum(
                         employee.paid_vars[day] for day in range(start_day, start_day + 3))
                     self.prob += consecutive_days_work + \
-                        paid_off <= 2, f"no_consecutive_3_days_work_{
-                            employee.id}_{start_day}"
+                        paid_off <= 2, f"no_consecutive_3_days_work_{employee.id}_{start_day}"
                 # 夕食の次の日昼食は嫌
                 for start_day in range(len(self.days) - 1):
                     is_assigned_today_evning_work = pulp.lpSum(employee.shift_vars[(start_day, self.work_types[i])]
@@ -474,8 +472,7 @@ class ShiftScheduler:
                 paid_off = pulp.lpSum(
                     full_emp.paid_vars[day] for day in range(start_day, start_day + 5))
                 self.prob += consecutive_days_work + \
-                    paid_off <= 4, f"no_consecutive_5_days_work_{
-                        full_emp.id}_{start_day}"
+                    paid_off <= 4, f"no_consecutive_5_days_work_{full_emp.id}_{start_day}"
 
     # 常勤従業員に対して先月分のシフトを考慮して5日連続の勤務を禁止する制約
     def add_constraint_for_no_consecutive_work_days_informed_by_last_month_shift_for_full_time_emp(self):
@@ -538,8 +535,7 @@ class ShiftScheduler:
                 elif not assigned_works:
                     schedule_df.at[f"{employee.name} - 業務1", day + 1] = "／"
                 for i, work in enumerate(assigned_works):
-                    schedule_df.at[f"{
-                        employee.name} - 業務{i+1}", day + 1] = work
+                    schedule_df.at[f"{employee.name} - 業務1", day + 1] = work
 
         schedule_df = schedule_df.replace(
             {'day': '昼', 'evening': '夕'}, regex=True)
