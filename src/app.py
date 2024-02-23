@@ -29,6 +29,8 @@ def main():
                 employees_data, full_time_employees_data = process_data(
                     uploaded_file, selected_year, selected_month)
                 if employees_data and full_time_employees_data:
+                    print("employees_data", "full_time_employees_data")
+                    print(employees_data, full_time_employees_data)
                     result = run_optimization(
                         employees_data, full_time_employees_data, selected_year, selected_month)
                     if isinstance(result, pd.DataFrame):
