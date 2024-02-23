@@ -9,7 +9,6 @@ import re
 import json
 from datetime import datetime
 
-import streamlit as st
 
 
 ##########################
@@ -549,7 +548,6 @@ class ShiftScheduler:
                     schedule_df.at[f"{e.name} - 業務1", day + 1] = "／"
 
         shift_df = pd.concat([df_weekday, schedule_df], ignore_index=False)
-        st.dataframe(schedule_df, 1600, 500)
 
         return shift_df
 
