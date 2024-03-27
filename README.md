@@ -25,7 +25,8 @@ cd streamlitShiftOpt
 
 ```
 docker build -t shift-optimization .
-docker run -d -p 8501:8501 --name shift-optimization-container shift-optimization
+
+docker run -d -p 8501:8501 -v "$(pwd)/src:/app/src" --name shift-optimization-container shift-optimization
 ```
 
 ## 使用方法

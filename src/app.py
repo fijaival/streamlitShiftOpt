@@ -7,6 +7,7 @@ from utils.validate_input import validate_input
 from run_optimization import run_optimization
 from auth import check_password
 
+
 def main():
     st.title('シフト自動生成')
     # 現在の年を取得
