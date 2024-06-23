@@ -24,9 +24,7 @@ cd streamlitShiftOpt
 次に、Docker イメージをビルドし、コンテナを作成します。
 
 ```
-docker build -t shift-optimization .
-
-docker run -d -p 8501:8501 -v "$(pwd)/src:/app/src" --name shift-optimization-container shift-optimization
+docker-compose up --build -d
 ```
 
 ## 使用方法
