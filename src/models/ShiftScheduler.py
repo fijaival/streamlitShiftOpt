@@ -296,6 +296,14 @@ class ShiftScheduler:
                 self.prob += consecutive_days_work + \
                     paid_off <= 4, f"no_consecutive_5_days_work_{employee.id}_{start_day}"
 
+    # 全日勤務可能な従業員について、4日間連続で全日勤務は禁止
+    def add_constraint_for_daily_workable_employee(self):
+        for employee in self.employees:
+            for start_day in range(len(self.days) - 3):
+                self.prob += pulp.lpSum(employee.shift_vars[(day, work_type)]
+                                        for day in range(start_day, start_day+4) for
+                                        work_type in self.work_types) <= 7
+
     # 第三木曜日は全員出勤
 
     def add_constraint_for_all_employees_third_thursday_attendance(self):
@@ -325,7 +333,7 @@ class ShiftScheduler:
 
     def add_constraint_for_no_consecutive_work_3days(self):
         for employee in self.employees:
-            if not employee.full_time:
+            if employee.id in [1, 2, 3, 4, 5]:
                 for start_day in range(len(self.days) - 2):
                     consecutive_days_work = pulp.lpSum(
                         employee.assigned_vars[day] for day in range(start_day, start_day + 3))
@@ -399,7 +407,7 @@ class ShiftScheduler:
     # 先月のシフトを考慮した3日連続の勤務を禁止する制約
     def add_constraint_for_no_consecutive_work_3days_informed_by_last_month_shift(self):
         for employee in self.employees:
-            if not employee.full_time:
+            if employee.id in [1, 2, 3, 4, 5]:
                 consecutive_days_work = pulp.lpSum(employee.assigned_vars[day]
                                                    for day in range(3 - employee.last_month_consecutive_days))
                 paid_off = pulp.lpSum(employee.paid_vars[day]
@@ -419,6 +427,7 @@ class ShiftScheduler:
     # 常勤従業員に対する制約
     ###########################
     # 常勤従業員は特定の日に出勤するようにする制約
+
     def culuculate_must_work_days(self):
         first_sunday, _, _ = self.caluculate_days()
         must_work_days = []
